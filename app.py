@@ -14,6 +14,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+# --- SECURE ADMIN INITIALIZATION ---
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
@@ -39,12 +40,16 @@ def init_db():
         )
     ''')
     
-    # Default instructor/admin account: username='instructor', password='admin123'
-    admin_hash = hashlib.sha256("admin123".encode()).hexdigest()
-    c.execute('''
-        INSERT OR IGNORE INTO users (username, password_hash, is_admin)
-        VALUES ('instructor', ?, 1)
-    ''', (admin_hash,))
+    # Safely pull admin details from Streamlit Secrets
+    if "admin" in st.secrets:
+        admin_user = st.secrets["admin"]["username"].lower()
+        admin_pass = st.secrets["admin"]["password"]
+        admin_hash = hashlib.sha256(admin_pass.encode()).hexdigest()
+        
+        c.execute('''
+            INSERT OR IGNORE INTO users (username, password_hash, is_admin)
+            VALUES (?, ?, 1)
+        ''', (admin_user, admin_hash))
     
     conn.commit()
     conn.close()
